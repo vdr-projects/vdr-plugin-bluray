@@ -146,9 +146,10 @@ bool cBDPlayer::DoRead()
   packs = bd_read_ext(bd, buffer, ALIGNED_UNIT_SIZE, &ev);
 
   if (packs == 0) {
-    // EOF
-    isyslog("End of title");
-    Cancel(-1);
+    if (ev.event == BD_EVENT_NONE) {
+      // title without video
+      cCondWait::SleepMs(3);
+    }
   } else if (packs < 0) {
     // ERROR
     esyslog("bd_read() error");
