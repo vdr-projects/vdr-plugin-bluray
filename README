@@ -1,0 +1,33 @@
+This is a "plugin" for the Video Disk Recorder (VDR).
+
+Written by:                  Petri Hintukainen <phintuka@users.sourceforge.net>
+
+Project's homepage:          http://projects.vdr-developer.org/projects/plg-bluray
+
+Latest version available at: http://projects.vdr-developer.org/projects/plg-bluray
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+See the file COPYING for more information.
+
+
+Description:
+
+  Simple BluRay disc player.
+
+Required libraries:
+
+  libbluray (http://www.videolan.org/developers/libbluray.html)
+
+Options:
+
+  -D,  --device    BluRay device (default /dev/sr0)
+  -p,  --path      Mount path for BluRay device (default /media/cdrom)
+  -m,  --mount     Program/script used to mount BluRay disc (default /bin/mount)
+  -u,  --unmount   Program/script used to unmount BluRay disc (default /bin/umount)
+  -e,  --eject     Program/script used to eject / close BluRay drive (default /usr/bin/eject)
+
+  All options except BluRay disc mount path are optional.
+  Helper scripts are used only if the disc is not automatically mounted.
