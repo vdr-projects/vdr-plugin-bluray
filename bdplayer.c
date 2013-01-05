@@ -10,6 +10,7 @@
 #include <vdr/remote.h>
 #include <vdr/tools.h>
 #include <vdr/status.h>
+#include <vdr/recording.h>  // cMarks
 
 #include <libbluray/bluray.h>
 #include <libbluray/meta_data.h>
@@ -25,6 +26,9 @@ private:
   BLURAY *bd;
   BLURAY_TITLE_INFO *title_info;
 
+  cMarks marks;
+  int current_chapter;
+
   enum ePlayModes { pmPlay, pmPause };
   ePlayModes playMode;
 
@@ -37,6 +41,7 @@ private:
   virtual void Activate(bool On);
 
   void UpdateTracks(unsigned int current_clip);
+  void UpdateMarks();
   void HandleEvents(BD_EVENT *ev);
   void Empty();
 
@@ -48,9 +53,11 @@ public:
   ~cBDPlayer();
 
   void Goto(int Seconds);
+  void SkipChapters(int Chapters);
   void SkipSeconds(int seconds);
   void Play();
   void Pause();
+  cMarks *Marks() { return &marks; }
 
   virtual bool GetIndex(int &Current, int &Total, bool SnapToIFrame = false);
   virtual bool GetReplayMode(bool &Play, bool &Forward, int &Speed);
@@ -98,6 +105,19 @@ void cBDPlayer::UpdateTracks(unsigned int current_clip)
   }
 }
 
+void cBDPlayer::UpdateMarks()
+{
+  ((cList<cMark> *)&marks)->Clear();
+
+  if (title_info && title_info->chapter_count > 1) {
+    marks.Add(0);
+    for (unsigned i = 1; i < title_info->chapter_count; i++) {
+      marks.Add(title_info->chapters[i].start / 90000 * 25 - 1);/// 90000 * 25;//DEFAULTFRAMESPERSECOND; // assume 25fps ...
+      marks.Add(title_info->chapters[i].start / 90000 * 25);/// 90000 * 25;//DEFAULTFRAMESPERSECOND; // assume 25fps ...
+    }
+  }
+}
+
 void cBDPlayer::HandleEvents(BD_EVENT *ev)
 {
   while (ev->event != BD_EVENT_NONE) {
@@ -113,13 +133,17 @@ void cBDPlayer::HandleEvents(BD_EVENT *ev)
         title_info = NULL;
       }
       title_info = bd_get_playlist_info(bd, ev->param, 0);
+      current_chapter = 1;
+      UpdateMarks();
       break;
 
     case BD_EVENT_PLAYITEM:
       UpdateTracks(ev->param);
       break;
 
-    //case BD_EVENT_CHAPTER:
+    case BD_EVENT_CHAPTER:
+      current_chapter = ev->param;
+      break;
 
     case BD_EVENT_END_OF_TITLE:
       isyslog("END_OF_TITLE");
@@ -258,6 +282,22 @@ void cBDPlayer::Goto(int seconds)
   bd_seek_time(bd, tick);
 }
 
+void cBDPlayer::SkipChapters(int Chapters)
+{
+  LOCK_THREAD;
+
+  if (title_info) {
+    int chapter = current_chapter + Chapters;
+    if (chapter < 1) chapter = 1;
+    if (chapter > (int)title_info->chapter_count) chapter = title_info->chapter_count;
+
+    Empty();
+
+    isyslog("Seek to chapter %d", chapter);
+    bd_seek_chapter(bd, chapter - 1);
+  }
+}
+
 void cBDPlayer::Empty(void)
 {
   LOCK_THREAD;
@@ -332,6 +372,7 @@ cBDControl::cBDControl(cBDPlayer *Player)
   lastSpeed = -2; // an invalid value
   timeoutShow = 0;
   timeSearchActive = false;
+  chapterSeekTime = 0;
 
   disc_name = tr("BluRay");
 
@@ -424,6 +465,12 @@ void cBDControl::SkipSeconds(int seconds)
     player->SkipSeconds(seconds);
 }
 
+void cBDControl::SkipChapters(int chapters)
+{
+  if (player)
+    player->SkipChapters(chapters);
+}
+
 void cBDControl::Goto(int seconds)
 {
   if (player)
@@ -504,6 +551,7 @@ bool cBDControl::ShowProgress(bool Initial)
   if (GetIndex(Current, Total) && Total > 0) {
      if (!visible) {
         displayReplay = Skins.Current()->DisplayReplay(modeOnly);
+        displayReplay->SetMarks(player->Marks());
         SetNeedsFastResponse(true);
         visible = true;
         }
@@ -663,7 +711,13 @@ eOSState cBDControl::ProcessKey(eKeys Key)
     case kBlue:
     case kStop:   Hide();
                   return osEnd;
-    case kBack:
+    case k4:      if (chapterSeekTime < time(NULL) - 2)
+                    SkipChapters(0);
+                  else
+                    SkipChapters(-1);
+                  chapterSeekTime = time(NULL);
+                  break;
+    case k6:      SkipChapters(1);
                   break;
     default: {
       DoShowMode = false;

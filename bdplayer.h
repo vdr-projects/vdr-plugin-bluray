@@ -25,6 +25,7 @@ private:
   void Play();
   void Pause();
   void SkipSeconds(int seconds);
+  void SkipChapters(int chapters);
   void Goto(int seconds);
 
   cSkinDisplayReplay *displayReplay;
@@ -35,6 +36,7 @@ private:
   time_t timeoutShow;
   bool timeSearchActive, timeSearchHide;
   int timeSearchTime, timeSearchPos;
+  int chapterSeekTime;
 
   void TimeSearchDisplay(void);
   void TimeSearchProcess(eKeys Key);
