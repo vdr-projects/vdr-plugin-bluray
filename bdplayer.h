@@ -12,12 +12,14 @@
 #include <vdr/tools.h>
 
 class cBDPlayer;
+struct bluray;
 
 class cBDControl : public cControl {
 private:
   static int active;
   cBDPlayer *player;
   cString disc_name;
+  cOsdMenu *menu;
 
   cBDControl();
   cBDControl(cBDPlayer *Player);
@@ -58,6 +60,9 @@ public:
 
   virtual cString GetHeader(void);
   virtual eOSState ProcessKey(eKeys Key);
+
+  struct bluray *BDHandle();
+  bool SelectPlaylist(int pl);
 };
 
 #endif //_BDPLAYER_H

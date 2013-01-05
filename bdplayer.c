@@ -60,6 +60,8 @@ public:
   void SkipSeconds(int seconds);
   void Play();
   void Pause();
+  bool SelectPlaylist(int pl);
+  BLURAY *BDHandle() { return bd; }
   cMarks *Marks() { return &marks; }
   cString PosStr();
 
@@ -317,6 +319,19 @@ void cBDPlayer::Empty(void)
   DeviceClear();
 }
 
+bool cBDPlayer::SelectPlaylist(int pl)
+{
+  bool end_of_title;
+
+  LOCK_THREAD;
+
+  Empty();
+
+  end_of_title = !bd_select_playlist(bd, pl);
+  isyslog("bd_select_playlist -> %s", end_of_title ? "FAIL" : "OK");
+  return !end_of_title;
+}
+
 void cBDPlayer::Pause(void)
 {
   // from vdr-1.7.34
@@ -373,6 +388,8 @@ bool cBDPlayer::GetReplayMode(bool &Play, bool &Forward, int &Speed)
 
 // --- cBDControl -------------------------------------------------------
 
+#include "titlemenu.h"
+
 #define MODETIMEOUT       3 // seconds
 
 int cBDControl::active = 0;
@@ -393,6 +410,7 @@ cBDControl::cBDControl(cBDPlayer *Player)
   chapterSeekTime = 0;
 
   disc_name = tr("BluRay");
+  menu = NULL;
 
   cStatus::MsgReplaying(this, "BluRay", NULL, true);
 }
@@ -475,6 +493,20 @@ void cBDControl::Play(void)
 {
   if (player)
     player->Play();
+}
+
+BLURAY *cBDControl::BDHandle()
+{
+  if (player)
+    return player->BDHandle();
+  return NULL;
+}
+
+bool cBDControl::SelectPlaylist(int pl)
+{
+  if (player)
+    return player->SelectPlaylist(pl);
+  return false;
 }
 
 void cBDControl::SkipSeconds(int seconds)
@@ -705,6 +737,23 @@ eOSState cBDControl::ProcessKey(eKeys Key)
   // from vdr-1.7.34
   if (!Active())
      return osEnd;
+
+  // Handle menus
+  if (menu) {
+    eOSState state = menu->ProcessKey(Key);
+    if (state == osBack) {
+      delete menu;
+      menu = NULL;
+      return osEnd;
+    }
+    if (state == osEnd) {
+      Hide();
+      delete menu;
+      menu = NULL;
+    }
+    return osContinue;
+  }
+
   if (visible) {
      if (timeoutShow && time(NULL) > timeoutShow) {
         Hide();
@@ -758,6 +807,9 @@ eOSState cBDControl::ProcessKey(eKeys Key)
                               }
                            else
                               Show();
+                           break;
+            case kBack:    Hide();
+                           menu = new cTitleMenu(this);
                            break;
             default:       return osUnknown;
           }
