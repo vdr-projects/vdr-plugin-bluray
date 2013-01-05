@@ -35,6 +35,9 @@ private:
   uchar buffer[ALIGNED_UNIT_SIZE];
   int   pos, packs;
 
+  int   current_playlist;
+  int   current_clip;
+
   bool DoRead(void);
   bool DoPlay(void);
 
@@ -58,6 +61,7 @@ public:
   void Play();
   void Pause();
   cMarks *Marks() { return &marks; }
+  cString PosStr();
 
   virtual bool GetIndex(int &Current, int &Total, bool SnapToIFrame = false);
   virtual bool GetReplayMode(bool &Play, bool &Forward, int &Speed);
@@ -69,6 +73,9 @@ cBDPlayer::cBDPlayer(BLURAY *Bd)
   title_info = NULL;
   playMode = pmPlay;
   pos = packs = 0;
+  current_clip = 0;
+  current_playlist = -1;
+  current_chapter = -1;
 }
 
 cBDPlayer::~cBDPlayer()
@@ -133,11 +140,14 @@ void cBDPlayer::HandleEvents(BD_EVENT *ev)
         title_info = NULL;
       }
       title_info = bd_get_playlist_info(bd, ev->param, 0);
-      current_chapter = 1;
+      current_playlist = ev->param;
+      current_chapter = -1;
+      current_clip = -1;
       UpdateMarks();
       break;
 
     case BD_EVENT_PLAYITEM:
+      current_clip = ev->param;
       UpdateTracks(ev->param);
       break;
 
@@ -286,7 +296,7 @@ void cBDPlayer::SkipChapters(int Chapters)
 {
   LOCK_THREAD;
 
-  if (title_info) {
+  if (title_info && current_chapter > 0) {
     int chapter = current_chapter + Chapters;
     if (chapter < 1) chapter = 1;
     if (chapter > (int)title_info->chapter_count) chapter = title_info->chapter_count;
@@ -329,6 +339,14 @@ void cBDPlayer::Play(void)
     DevicePlay();
     playMode = pmPlay;
   }
+}
+
+cString cBDPlayer::PosStr()
+{
+  cString pl = current_playlist >= 0 ? cString::sprintf("PL %d",  current_playlist) : cString("");
+  cString cl = current_clip     >= 0 ? cString::sprintf(" CL %d", current_clip)     : cString("");
+  cString ch = current_chapter  >= 1 ? cString::sprintf(" C %d",  current_chapter)  : cString("");
+  return cString::sprintf("%s%s%s", *pl, *cl, *ch);
 }
 
 bool cBDPlayer::GetIndex(int &Current, int &Total, bool SnapToIFrame)
@@ -569,6 +587,16 @@ bool cBDControl::ShowProgress(bool Initial)
         if (!Initial)
            displayReplay->Flush();
         displayReplay->SetCurrent(IndexToHMSF(Current, false, FramesPerSecond()));
+
+        cString Title;
+        cString Pos = player ? player->PosStr() : cString(NULL);
+        if (*Pos && strlen(Pos) > 1) {
+          Title = cString::sprintf("%s (%s)", *disc_name, *Pos);
+        } else {
+          Title = disc_name;
+        }
+        displayReplay->SetTitle(Title);
+
         displayReplay->Flush();
         lastCurrent = Current;
         }
