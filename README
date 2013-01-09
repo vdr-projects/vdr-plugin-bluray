@@ -28,6 +28,8 @@ Options:
   -m,  --mount     Program/script used to mount BluRay disc (default /bin/mount)
   -u,  --unmount   Program/script used to unmount BluRay disc (default /bin/umount)
   -e,  --eject     Program/script used to eject / close BluRay drive (default /usr/bin/eject)
+  -l,  --lib       Path where to search BluRay discs from
 
   All options except BluRay disc mount path are optional.
   Helper scripts are used only if the disc is not automatically mounted.
+

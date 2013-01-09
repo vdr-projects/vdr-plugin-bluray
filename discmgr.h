@@ -22,7 +22,6 @@ private:
 
   cString Device, Path, MountCmd, UnMountCmd, EjectCmd;
 
-  bool IsMounted(void);
   void Mount(bool Retry = true);
   void UnMount(void);
   void CloseTray(void);
@@ -30,6 +29,7 @@ private:
  public:
   cDiscMgr();
 
+  const char *GetDev(void)          { return Device; }
   const char *GetPath(void)         { return Path; }
 
   void SetDevice(const char *D)     { Device = D; }
@@ -37,6 +37,8 @@ private:
   void SetMountCmd(const char *M)   { MountCmd = M; }
   void SetUnMountCmd(const char *U) { UnMountCmd = U; }
   void SetEjectCmd(const char *E)   { EjectCmd = E; }
+
+  bool IsMounted(void);
 
   bool CheckDisc(void);
   void Eject(void);

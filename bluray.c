@@ -9,6 +9,7 @@
 #include <vdr/plugin.h>
 
 #include "discmgr.h"
+#include "discmenu.h"
 #include "bdplayer.h"
 
 static const char *VERSION        = "0.0.1";
@@ -20,6 +21,7 @@ class cPluginBluray : public cPlugin {
 private:
   // Add any member variables or functions you may need here.
   cDiscMgr mgr;
+  cString  DiscLib;
 
 public:
   cPluginBluray(void);
@@ -52,7 +54,8 @@ const char *cPluginBluray::CommandLineHelp(void)
     "  -p DIR,    --path=DIR     mount point for BluRay discs (default "DEFAULT_PATH")\n"
     "  -m CMD,    --mount=CMD    program used to mount BluRay disc (default "DEFAULT_MOUNTER")\n"
     "  -u CMD,    --umount=CMD   program used to unmount BluRay disc (default "DEFAULT_UNMOUNTER")\n"
-    "  -e CMD,    --eject=CMD    program used to eject BluRay disc (default "DEFAULT_EJECT")\n";
+    "  -e CMD,    --eject=CMD    program used to eject BluRay disc (default "DEFAULT_EJECT")\n"
+    "  -l DIR,    --lib=DIR      directory to search for multiple BluRay discs (default: none)n";
 }
 
 bool cPluginBluray::ProcessArgs(int argc, char *argv[])
@@ -65,6 +68,7 @@ bool cPluginBluray::ProcessArgs(int argc, char *argv[])
     { "mount",    optional_argument, NULL, 'm' },
     { "umount",   optional_argument, NULL, 'u' },
     { "eject",    optional_argument, NULL, 'e' },
+    { "lib",      optional_argument, NULL, 'l' },
     { NULL,       no_argument,       NULL,  0  }
   };
 
@@ -86,6 +90,9 @@ bool cPluginBluray::ProcessArgs(int argc, char *argv[])
       case 'e':
         mgr.SetEjectCmd(optarg);
         break;
+      case 'l':
+        DiscLib = optarg;
+        break;
       default:
         return false;
     }
@@ -97,8 +104,13 @@ bool cPluginBluray::ProcessArgs(int argc, char *argv[])
 cOsdObject *cPluginBluray::MainMenuAction(void)
 {
   // Perform the action when selected from the main VDR menu.
+
   if (cBDControl::Active()) {
     return NULL;
+  }
+
+  if (*DiscLib) {
+    return new cDiscMenu(mgr, DiscLib);
   }
 
   if (!mgr.CheckDisc()) {

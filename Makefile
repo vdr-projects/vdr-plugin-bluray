@@ -54,7 +54,7 @@ DEFINES += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"'
 
 ### The object files (add further files here):
 
-OBJS = $(PLUGIN).o bdplayer.o discmgr.o titlemenu.o
+OBJS = $(PLUGIN).o bdplayer.o discmgr.o titlemenu.o discmenu.o
 
 ### The main target:
 
