@@ -147,7 +147,7 @@ eOSState cDiscMenu::ProcessKey(eKeys Key)
 
       cControl::Shutdown();
 
-      cControl *control = cBDControl::Create(mgr.GetPath());
+      cControl *control = cBDControl::Create(mgr.GetDev());
       if (control) {
         cControl::Launch(control);
         return osEnd;
