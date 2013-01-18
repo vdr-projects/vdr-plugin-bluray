@@ -26,6 +26,38 @@ static bool IsBluRayFolder(const char *fname)
   return false;
 }
 
+static cString GetMetaName(const char *Root)
+{
+  cString file = cString::sprintf("%s/BDMV/META/DL/bdmt_eng.xml", Root);
+  cString result(NULL);
+  struct stat st;
+
+  if (stat(file, &st) == 0) {
+    FILE *fp = fopen(file, "rt");
+    if (fp) {
+      fseek(fp, 0, SEEK_END);
+      long len = ftell(fp);
+      if (len > 0 && len < 0xffff) {
+        fseek(fp, 0, SEEK_SET);
+        char buf[len+1];
+        if ((size_t)len == fread(buf, 1, len, fp)) {
+          buf[len] = 0;
+          char *p = strstr(buf, "<di:name>");
+          if (p) {
+            char *end = strstr(p, "</di:name>");
+            if (end) {
+              *end = 0;
+              result = p + 9;
+            }
+          }
+        }
+      }
+      fclose(fp);
+    }
+  }
+  return result;
+}
+
 /*
  * cDiscItem
  */
@@ -70,7 +102,13 @@ cDiscMenu::cDiscMenu(cDiscMgr& Mgr, cString& Root) :
   Sort();
 
   if (mgr.IsMounted()) {
-    Ins(new cDiscItem(cString::sprintf("BluRay disc (%s)", mgr.GetDev())));
+    cString title = GetMetaName(mgr.GetPath());
+    if (*title) {
+      title = cString::sprintf("%s (%s)", *title, mgr.GetDev());
+    } else {
+      title = cString::sprintf("BluRay disc (%s)", mgr.GetDev());
+    }
+    Ins(new cDiscItem(title));
     //SetHelp("Eject");
   } else {
     Ins(new cDiscItem("(Disc not mounted)"));
@@ -103,7 +141,9 @@ void cDiscMenu::Scan(cString& Root)
           if (S_ISDIR(st.st_mode)) {
 
             if (IsBluRayFolder(buffer)) {
-              Add(new cDiscItem(e->d_name, buffer));
+
+              cString s = GetMetaName(buffer);
+              Add(new cDiscItem(*s ? *s : e->d_name, buffer));
 
             } else {
               Scan(buffer);
